@@ -1,0 +1,18 @@
+{
+    "name": "tmeister/direct-crawler",
+    "autoload": {
+        "psr-4": {
+            "Tmeister\\DirectCrawler\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Tmeister",
+            "email": "noone@tmeister.net"
+        }
+    ],
+    "require": {
+        "league/csv": "^9.8",
+        "fabpot/goutte": "^4.0"
+    }
+}
