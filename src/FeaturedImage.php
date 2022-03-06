@@ -2,13 +2,15 @@
 
 namespace Tmeister\DirectCrawler;
 
+use WP_CLI;
+
 class FeaturedImage {
 	public static function store( string $url, int $postId ) {
 		// Set folder paths and filename for featured image
 		$uploadDir      = wp_upload_dir( '2022/03' );
-		$uniqueFilename = \wp_unique_filename( $uploadDir['path'], \basename( $url ) );
+		$uniqueFilename = wp_unique_filename( $uploadDir['path'], \basename( $url ) );
 		$fullImagePath  = $uploadDir['path'] . '/' . $uniqueFilename;
-		$fileType       = \wp_check_filetype( $uniqueFilename, null );
+		$fileType       = wp_check_filetype( $uniqueFilename );
 
 		// Download and store featured image
 		$imageData = \file_get_contents( $url );
@@ -18,7 +20,7 @@ class FeaturedImage {
 		$attachmentId = wp_insert_attachment( [
 			'guid'           => $uploadDir['url'] . '/' . $uniqueFilename,
 			'post_mime_type' => $fileType['type'],
-			'post_title'     => \sanitize_file_name( $uniqueFilename ),
+			'post_title'     => sanitize_file_name( $uniqueFilename ),
 			'post_content'   => '',
 			'post_status'    => 'inherit',
 		], $fullImagePath, $postId );
@@ -36,6 +38,6 @@ class FeaturedImage {
 		set_post_thumbnail( $postId, $attachmentId );
 
 		// Print a feedback message
-		\WP_CLI::success( 'New Image: ' . $fullImagePath );
+		WP_CLI::success( 'New Image: ' . $fullImagePath );
 	}
 }

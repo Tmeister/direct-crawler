@@ -14,5 +14,8 @@
     "require": {
         "league/csv": "^9.8",
         "fabpot/goutte": "^4.0"
+    },
+    "require-dev": {
+        "wp-cli/wp-cli": "^2.6"
     }
 }

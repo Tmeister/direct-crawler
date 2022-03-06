@@ -2,8 +2,10 @@
 
 namespace Tmeister\DirectCrawler;
 
+use Exception;
 use Goutte\Client;
 use League\Csv\Reader;
+use WP_CLI;
 
 class Parser {
 	protected string $postsFile = 'posts.csv';
@@ -13,7 +15,7 @@ class Parser {
 	protected int $userId = 2;
 
 	public function __construct() {
-		$this->path = plugin_dir_path( __FILE__ );
+		$this->path   = plugin_dir_path( __FILE__ );
 		$this->client = new Client();
 	}
 
@@ -36,17 +38,17 @@ class Parser {
 
 			// Create a new WP post based on the parsed post
 			$postId = $this->createPost( $rawPost );
-			\WP_CLI::line( 'New post created: ' . $postId . ' - ' . $rawPost['post_title'] );
+			WP_CLI::line( 'New post created: ' . $postId . ' - ' . $rawPost['post_title'] );
 
 			// Get, store and set the post's featured image
 			if ( $rawPost['featured_image'] ) {
 				FeaturedImage::store( $rawPost['featured_image'], $postId );
 			}
 
-			\WP_CLI::line( '==========================================================' );
+			WP_CLI::line( '==========================================================' );
 		}
 
-		\WP_CLI::line( 'Scrapper Completed ' . $count . ' posts' );
+		WP_CLI::line( 'Scrapper Completed ' . $count . ' posts' );
 	}
 
 	private function getBlogPosts(): \Iterator {
@@ -69,8 +71,8 @@ class Parser {
 			try {
 				$featuredImage = $crawler->filter( 'div.post-content img' )->attr( 'src' );
 				$featuredUrl   = $this->siteUrl . $featuredImage;
-			} catch ( \Exception $e ) {
-				\WP_CLI::warning( 'No Featured Image found ', $e->getMessage() );
+			} catch ( Exception $e ) {
+				WP_CLI::warning( 'No Featured Image found ', $e->getMessage() );
 			}
 
 			$formattedDate = date( 'Y-m-d H:i:s', strtotime( $date ) );
@@ -81,8 +83,8 @@ class Parser {
 				'post_date'      => $formattedDate,
 				'featured_image' => $featuredUrl,
 			];
-		} catch ( \Exception $e ) {
-			\WP_CLI::warning( 'Post not created : ' . $post );
+		} catch ( Exception $e ) {
+			WP_CLI::warning( 'Post not created : ' . $post );
 
 			return false;
 		}
@@ -92,6 +94,6 @@ class Parser {
 		$rawPost['post_author'] = $this->userId;
 		$rawPost['post_status'] = 'publish';
 
-		return \wp_insert_post( $rawPost );
+		return wp_insert_post( $rawPost );
 	}
 }
