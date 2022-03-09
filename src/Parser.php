@@ -4,20 +4,27 @@ namespace Tmeister\DirectCrawler;
 
 use Exception;
 use Goutte\Client;
+use Iterator;
 use League\Csv\Reader;
 use WP_CLI;
+use WP_Error;
 use WPSEO_Meta;
 
 class Parser {
+
 	protected string $postsFile = 'posts.csv';
 	protected string $siteUrl = 'https://www.directac123.com';
 	protected string $path;
 	protected Client $client;
-	protected int $userId = 2;
+	protected int $userId = 1;
+	protected string $htaccessFile = 'htaccess.txt';
+	protected $htaccessHandle;
 
 	public function __construct() {
 		$this->path   = plugin_dir_path( __FILE__ );
 		$this->client = new Client();
+
+		$this->htaccessHandle = fopen( $this->path . '../' . $this->htaccessFile, 'w' );
 	}
 
 	public function get(): void {
@@ -25,12 +32,12 @@ class Parser {
 		$posts = $this->getBlogPosts();
 
 		foreach ( $posts as $post ) {
-//			if ( $count === 1 ) {
+//			if ( $count++ === 1 ) {
 //				break;
 //			}
 
 			// Parse the external URL and get the post parts
-			$rawContent = $this->parsePost( $post[0], ++ $count );
+			$rawContent = $this->parsePost( $post[0] );
 
 			// Skip if the post is not found
 			if ( ! $rawContent['post'] ) {
@@ -47,33 +54,36 @@ class Parser {
 				FeaturedImage::store( $rawContent['post']['featured_image'], $postId );
 			}
 
-			// Update the post's meta if any
-			try {
-				WP_CLI::line( 'Updating post meta...' );
-				WP_CLI::line( print_r( $rawContent['meta'], true ) );
-				if ( isset( $rawContent['meta'] ) && $rawContent['meta']['title'] && ! empty( $rawContent['meta']['title'] ) ) {
-					WPSEO_Meta::set_value( 'title', $rawContent['meta']['title'], $postId );
-				}
-				if ( isset( $rawContent['meta'] ) && $rawContent['meta']['description'] && ! empty( $rawContent['meta']['description'] ) ) {
-					WPSEO_Meta::set_value( 'metadesc', $rawContent['meta']['description'], $postId );
-				}
-			} catch
-			( Exception $e ) {
-				WP_CLI::line( 'Error updating post meta: ' . $e->getMessage() );
+			// Update the post's metadata
+			if ( $rawContent['meta'] ) {
+				$this->setMeta( $postId, $rawContent['meta'] );
 			}
+
+			// Create the redirection
+			$this->createRedirection( $post[0], $postId );
+
 			WP_CLI::line( '==========================================================' );
 		}
 
+		fclose( $this->htaccessHandle );
 		WP_CLI::line( 'Scrapper Completed ' . $count . ' posts' );
 	}
 
-	private function getBlogPosts(): \Iterator {
+	/**
+	 * @return Iterator
+	 */
+	protected function getBlogPosts(): Iterator {
 		$file = $this->path . $this->postsFile;
 
 		return Reader::createFromPath( $file )->getRecords();
 	}
 
-	private function parsePost( $post ) {
+	/**
+	 * @param $post
+	 *
+	 * @return array|false
+	 */
+	protected function parsePost( $post ) {
 		$crawler = $this->client->request( 'GET', $post );
 
 		try {
@@ -110,7 +120,7 @@ class Parser {
 					}
 
 					if ( $property === 'og:description' ) {
-						$meta['description'] = $node->attr( 'content' );
+						$meta['metadesc'] = $node->attr( 'content' );
 					}
 				} );
 			} catch ( Exception $e ) {
@@ -129,10 +139,36 @@ class Parser {
 		}
 	}
 
-	private function createPost( array $rawPost ) {
+	/**
+	 * @param array $rawPost
+	 *
+	 * @return int|WP_Error
+	 */
+	protected function createPost( array $rawPost ) {
 		$rawPost['post_author'] = $this->userId;
 		$rawPost['post_status'] = 'publish';
 
 		return wp_insert_post( $rawPost );
+	}
+
+	/**
+	 * @param int $postId
+	 * @param array $meta
+	 */
+	private function setMeta( int $postId, array $meta ) {
+		WP_CLI::line( 'Updating post meta...' );
+		foreach ( $meta as $key => $value ) {
+			WPSEO_Meta::set_value( $key, $value, $postId );
+		}
+	}
+
+	/**
+	 * @param string $oldUrl
+	 * @param int $postId
+	 */
+	private function createRedirection( string $oldUrl, int $postId ) {
+		$newPortUrl = get_permalink( $postId );
+		fwrite( $this->htaccessHandle, 'Redirect 301 ' . $oldUrl . ' ' . $newPortUrl . PHP_EOL );
+		fwrite( $this->htaccessHandle, 'Redirect 301 ' . $oldUrl . 'index.html ' . $newPortUrl . PHP_EOL );
 	}
 }

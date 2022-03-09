@@ -5,6 +5,11 @@ namespace Tmeister\DirectCrawler;
 use WP_CLI;
 
 class FeaturedImage {
+
+	/**
+	 * @param string $url
+	 * @param int $postId
+	 */
 	public static function store( string $url, int $postId ) {
 		// Set folder paths and filename for featured image
 		$uploadDir      = wp_upload_dir( '2022/03' );
