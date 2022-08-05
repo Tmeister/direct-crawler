@@ -13,7 +13,7 @@ use WPSEO_Meta;
 class Parser {
 
 	protected string $postsFile = 'posts.csv';
-	protected string $siteUrl = 'https://www.directac123.com';
+	protected string $siteUrl = 'https://final-domain.com';
 	protected string $path;
 	protected Client $client;
 	protected int $userId = 1;
